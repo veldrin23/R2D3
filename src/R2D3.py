@@ -1,45 +1,82 @@
 from PIL import ImageGrab
-import time
-from findGameWindow import *
-from processImage import *
-from sendCommand import *
+from src.findGameWindow import *
+from src.processImage import *
+from src.sendCommand import *
 import sys
+import scipy.misc
+from pynput.keyboard import Listener as keyboardListener
+from pynput.mouse import Listener as mouseListener
 import pyautogui
-import random
 
 
-gameName = sys.argv[0]
-
-
+# gameName = sys.argv[0]
+diabloKeys = ['1', '2', '3', '4', 'q', 'click']
+gameName = "Blizzard App"
 last_time = time.time()
 
 
-d3Window = getWindowSizes("Diablo III")
-# print(d3Window)
+# d3Window = getWindowSizes("Diablo III")
+d3Window = getWindowSizes("Blizzard App")
+
 # win32gui.SetForegroundWindow(d3Window[0][3])
 box = (d3Window[0][1][0], d3Window[0][1][1],
        d3Window[0][1][0] + d3Window[0][2][0],
        d3Window[0][1][1] + d3Window[0][2][1])
 
-center = ((2 * d3Window[0][1][0] + d3Window[0][2][0])/2, (d3Window[0][1][1] * 2 +  d3Window[0][2][1])/2)
+center = ((2 * d3Window[0][1][0] + d3Window[0][2][0])/2, (d3Window[0][1][1] * 2 + d3Window[0][2][1])/2)
 
-while True:
+
+keysPressed = []
+clicks = []
+
+k_counter = 0
+m_counter = 0
+
+
+def save_screenshot(gameName):
+    timeStamp = str(int(time.time()))
     screen = np.array(ImageGrab.grab(bbox=box))
-    new_screen = mag_thresh(screen)
-    print("Loop took {} seconds".format(time.time() - last_time))
-
-    last_time = time.time()
-    cv2.imshow("window", new_screen)
-
-    if(cv2.waitKey(25) & 0xFF == ord('q')):
-       cv2.destroyAllWindows()
-       break
+    scipy.misc.imsave("../screens/" + gameName + timeStamp + ".jpg", screen)
 
 
 
-    if(random.uniform(0,1) < .075):
-      sendCommand("attack", x = center[0] + random.uniform(-50,50), y = center[1] + random.uniform(-50,50))
+def on_press(key):
+    key_press = key.char
+    x, y = pyautogui.position()
+    if key_press in diabloKeys:
 
-    pyautogui.moveTo(center)
+        save_screenshot(gameName)
+        keysPressed.append({x, y, key_press})
+        if (int(time.time()) % 2) == 0:
+            print("fok")
+            with open("../" + gameName + "_log.txt", 'wb') as f:
+                for k in keysPressed:
+                    print(k)
+                    f.write(k)
+                    f.flush()
+                f.close()
 
-    
+def on_click(x, y, button, pressed):
+    if d3Window[0][1][0] <= x <= d3Window[0][1][0] + d3Window[0][2][0] and \
+            d3Window[0][1][1] <= y <= d3Window[0][1][1] + d3Window[0][2][1] and pressed:
+        # print(button)
+        save_screenshot(gameName)
+
+
+k_listener = keyboardListener(on_press=on_press)
+m_listener = mouseListener(on_click=on_click)
+
+for i in range(3):
+    print(5-i)
+    time.sleep(.5)
+print("Starting to listen....")
+
+
+m_listener.start()
+k_listener.start()
+
+time.sleep(15)
+
+m_listener.stop()
+k_listener.stop()
+print("stopped")
